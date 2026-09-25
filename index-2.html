@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#171512">
+<title>چت شخصی من</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAF8F4; --surface: #FFFFFF; --surface-2: #F1EEE7;
+    --ink: #211F1C; --ink-soft: #6B675F; --ink-faint: #A8A399;
+    --line: #E4E0D6; --accent: #B5773E; --accent-ink: #FFFFFF;
+    --accent-soft: #F3E4D2; --danger: #B3452F; --bubble-user: #E9E4D8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171512; --surface: #211F1C; --surface-2: #2A2723;
+      --ink: #F3EFE7; --ink-soft: #B0AA9E; --ink-faint: #7A756A;
+      --line: #38342E; --accent: #D69A5C; --accent-ink: #1C1610;
+      --accent-soft: #3A2E20; --danger: #E08468; --bubble-user: #33302A;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Vazirmatn', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    display: flex; flex-direction: column; min-height: 100%;
+    overflow: hidden;
+  }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.9rem 1.1rem; border-bottom: 1px solid var(--line);
+    flex-shrink: 0; gap: 0.6rem;
+  }
+  .topbar h1 { font-size: 1.05rem; font-weight: 700; margin: 0; }
+  .topbar-btns { display: flex; gap: 0.4rem; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--surface-2); color: var(--ink-soft);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  select#model-select {
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 0.45rem 0.6rem; font-family: inherit; font-size: 0.78rem; color: var(--ink);
+    max-width: 130px;
+  }
+
+  #messages {
+    flex: 1; overflow-y: auto; padding: 1rem 1rem 0.5rem;
+    display: flex; flex-direction: column; gap: 0.7rem;
+  }
+  .msg {
+    max-width: 85%; padding: 0.7rem 0.95rem; border-radius: 16px;
+    font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word;
+  }
+  .msg.user { align-self: flex-start; background: var(--bubble-user); border-bottom-left-radius: 4px; }
+  .msg.assistant { align-self: flex-end; background: var(--surface); border: 1px solid var(--line); border-bottom-right-radius: 4px; }
+  .msg.system-note {
+    align-self: center; font-size: 0.78rem; color: var(--ink-faint);
+    background: transparent; padding: 0.3rem;
+  }
+  .msg.error { border: 1px solid var(--danger); color: var(--danger); }
+  .msg.loading { align-self: flex-end; color: var(--ink-faint); font-style: italic; }
+
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: var(--ink-faint); text-align: center; padding: 2rem; gap: 0.6rem;
+  }
+  .empty-state svg { width: 40px; height: 40px; opacity: 0.5; }
+  .empty-state p { margin: 0; font-size: 0.9rem; max-width: 260px; }
+
+  .input-row {
+    display: flex; align-items: flex-end; gap: 0.6rem; padding: 0.8rem 1rem;
+    border-top: 1px solid var(--line); flex-shrink: 0; background: var(--bg);
+  }
+  #input-box {
+    flex: 1; resize: none; border: 1px solid var(--line); background: var(--surface-2);
+    border-radius: 16px; padding: 0.7rem 0.95rem; font-family: inherit; font-size: 0.95rem;
+    color: var(--ink); max-height: 120px; min-height: 44px;
+  }
+  #input-box:focus { outline: none; border-color: var(--accent); }
+  #send-btn {
+    width: 44px; height: 44px; border-radius: 50%; border: none; background: var(--accent);
+    color: var(--accent-ink); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  #send-btn svg { width: 19px; height: 19px; }
+  #send-btn:disabled { opacity: 0.5; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: none; align-items: flex-end; justify-content: center; z-index: 50;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); width: 100%; max-width: 480px;
+    border-radius: 20px 20px 0 0; padding: 1.3rem 1.2rem calc(1.3rem + env(safe-area-inset-bottom, 0px));
+    max-height: 80vh; overflow-y: auto;
+  }
+  .modal h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 1rem; }
+  .field-label { font-size: 0.82rem; color: var(--ink-faint); margin: 0 0 0.4rem; }
+  .modal input[type="text"], .modal input[type="password"], .modal textarea {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 0.7rem 0.9rem; font-family: inherit; font-size: 0.9rem;
+    color: var(--ink); margin-bottom: 1.1rem; direction: ltr; text-align: left;
+  }
+  .modal textarea { direction: rtl; text-align: right; min-height: 90px; resize: vertical; }
+  .modal .hint { font-size: 0.76rem; color: var(--ink-faint); margin: -0.8rem 0 1.1rem; line-height: 1.5; }
+  .modal .hint a { color: var(--accent); }
+  .modal-actions { display: flex; gap: 0.6rem; }
+  .modal-btn {
+    flex: 1; padding: 0.75rem; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--surface-2); color: var(--ink); font-family: inherit; font-size: 0.9rem;
+    font-weight: 500; cursor: pointer;
+  }
+  .modal-btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>چت شخصی من</h1>
+  <div class="topbar-btns">
+    <select id="model-select" aria-label="انتخاب مدل"></select>
+    <button class="icon-btn" id="settings-btn" aria-label="تنظیمات" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+    <button class="icon-btn" id="clear-btn" aria-label="پاک کردن گفتگو" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+    </button>
+  </div>
+</div>
+
+<div id="messages">
+  <div class="empty-state" id="empty-state">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    <p>برای شروع، اول از تنظیمات کلید API خودت رو وارد کن، بعد پیام بفرست.</p>
+  </div>
+</div>
+
+<div class="input-row">
+  <textarea id="input-box" placeholder="پیامت رو بنویس..." rows="1"></textarea>
+  <button id="send-btn" aria-label="ارسال" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+  </button>
+</div>
+
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <h2>تنظیمات</h2>
+    <p class="field-label">کلید API از Google AI Studio</p>
+    <input type="password" id="api-key-input" placeholder="AIzaSy...">
+    <p class="hint">از <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> با حساب گوگل خودت رایگان بساز — نیاز به کارت بانکی نیست. کلید فقط روی همین گوشی تو ذخیره می‌شه.</p>
+
+    <p class="field-label">دستورالعمل سیستم (System Prompt)</p>
+    <textarea id="system-prompt-input" placeholder="مثلاً: تو یک دستیار صریح و بی‌پرده هستی که..."></textarea>
+    <p class="hint">این متن به مدل می‌گه چطور رفتار کنه. کاملاً دست خودته.</p>
+
+    <div class="modal-actions">
+      <button class="modal-btn" id="cancel-settings" type="button">انصراف</button>
+      <button class="modal-btn primary" id="save-settings" type="button">ذخیره</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const FREE_MODELS = [
+  { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+  { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }
+];
+
+const DEFAULT_SYSTEM_PROMPT = "تو یک دستیار هوش مصنوعی صادق و مستقیم هستی. به‌طور کامل و بی‌پرده به سوالات پاسخ می‌دی، بدون احتیاط‌های غیرضروری یا امتناع‌های بی‌مورد. همچنان صادق، دقیق و مفید باش.";
+
+let state = {
+  apiKey: localStorage.getItem("chat_api_key") || "",
+  systemPrompt: localStorage.getItem("chat_system_prompt") || DEFAULT_SYSTEM_PROMPT,
+  model: localStorage.getItem("chat_model") || FREE_MODELS[0].id,
+  history: []
+};
+
+try {
+  const savedHistory = localStorage.getItem("chat_history");
+  if (savedHistory) state.history = JSON.parse(savedHistory);
+} catch (e) { state.history = []; }
+
+const messagesEl = document.getElementById("messages");
+const emptyState = document.getElementById("empty-state");
+const inputBox = document.getElementById("input-box");
+const sendBtn = document.getElementById("send-btn");
+const modelSelect = document.getElementById("model-select");
+const settingsModal = document.getElementById("settings-modal");
+const apiKeyInput = document.getElementById("api-key-input");
+const systemPromptInput = document.getElementById("system-prompt-input");
+
+function populateModelSelect() {
+  modelSelect.innerHTML = FREE_MODELS.map(m =>
+    '<option value="' + m.id + '">' + m.label + '</option>'
+  ).join("");
+  modelSelect.value = state.model;
+}
+
+function renderMessages() {
+  if (state.history.length === 0) {
+    emptyState.style.display = "flex";
+    messagesEl.querySelectorAll(".msg").forEach(el => el.remove());
+    return;
+  }
+  emptyState.style.display = "none";
+  messagesEl.innerHTML = "";
+  state.history.forEach(m => {
+    const div = document.createElement("div");
+    div.className = "msg " + (m.role === "user" ? "user" : "assistant");
+    div.textContent = m.content;
+    messagesEl.appendChild(div);
+  });
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function addSystemNote(text) {
+  const div = document.createElement("div");
+  div.className = "msg system-note";
+  div.textContent = text;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function saveHistory() {
+  try { localStorage.setItem("chat_history", JSON.stringify(state.history)); } catch (e) {}
+}
+
+async function sendMessage() {
+  const text = inputBox.value.trim();
+  if (!text) return;
+
+  if (!state.apiKey) {
+    openSettings();
+    addSystemNote("اول کلید API رو در تنظیمات وارد کن.");
+    return;
+  }
+
+  state.history.push({ role: "user", content: text });
+  renderMessages();
+  saveHistory();
+  inputBox.value = "";
+  inputBox.style.height = "auto";
+  sendBtn.disabled = true;
+
+  const loadingDiv = document.createElement("div");
+  loadingDiv.className = "msg loading";
+  loadingDiv.textContent = "در حال فکر کردن...";
+  messagesEl.appendChild(loadingDiv);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  try {
+    const contents = state.history.map(m => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }]
+    }));
+
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/" +
+      state.model + ":generateContent";
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": state.apiKey
+      },
+      body: JSON.stringify({
+        contents: contents,
+        systemInstruction: { parts: [{ text: state.systemPrompt }] }
+      })
+    });
+
+    loadingDiv.remove();
+
+    if (!response.ok) {
+      const errText = await response.text();
+      let msg = "خطا در دریافت پاسخ (" + response.status + ")";
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson.error && errJson.error.message) msg = errJson.error.message;
+      } catch (e) {}
+      const errDiv = document.createElement("div");
+      errDiv.className = "msg assistant error";
+      errDiv.textContent = msg;
+      messagesEl.appendChild(errDiv);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      sendBtn.disabled = false;
+      return;
+    }
+
+    const data = await response.json();
+    const reply = data.candidates && data.candidates[0] && data.candidates[0].content &&
+      data.candidates[0].content.parts && data.candidates[0].content.parts[0]
+      ? data.candidates[0].content.parts[0].text
+      : "پاسخی دریافت نشد (ممکن است به دلیل فیلتر ایمنی مسدود شده باشد).";
+
+    state.history.push({ role: "assistant", content: reply });
+    renderMessages();
+    saveHistory();
+  } catch (err) {
+    loadingDiv.remove();
+    const errDiv = document.createElement("div");
+    errDiv.className = "msg assistant error";
+    errDiv.textContent = "خطای اتصال: " + err.message;
+    messagesEl.appendChild(errDiv);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  sendBtn.disabled = false;
+}
+
+function openSettings() {
+  apiKeyInput.value = state.apiKey;
+  systemPromptInput.value = state.systemPrompt;
+  settingsModal.classList.add("open");
+}
+function closeSettings() {
+  settingsModal.classList.remove("open");
+}
+
+document.getElementById("settings-btn").addEventListener("click", openSettings);
+document.getElementById("cancel-settings").addEventListener("click", closeSettings);
+document.getElementById("save-settings").addEventListener("click", () => {
+  state.apiKey = apiKeyInput.value.trim();
+  state.systemPrompt = systemPromptInput.value.trim() || DEFAULT_SYSTEM_PROMPT;
+  localStorage.setItem("chat_api_key", state.apiKey);
+  localStorage.setItem("chat_system_prompt", state.systemPrompt);
+  closeSettings();
+});
+settingsModal.addEventListener("click", (e) => {
+  if (e.target === settingsModal) closeSettings();
+});
+
+document.getElementById("clear-btn").addEventListener("click", () => {
+  state.history = [];
+  saveHistory();
+  renderMessages();
+});
+
+modelSelect.addEventListener("change", () => {
+  state.model = modelSelect.value;
+  localStorage.setItem("chat_model", state.model);
+});
+
+sendBtn.addEventListener("click", sendMessage);
+inputBox.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+inputBox.addEventListener("input", () => {
+  inputBox.style.height = "auto";
+  inputBox.style.height = Math.min(inputBox.scrollHeight, 120) + "px";
+});
+
+populateModelSelect();
+renderMessages();
+if (!state.apiKey) {
+  setTimeout(openSettings, 400);
+}
+</script>
+</body>
+</html>
